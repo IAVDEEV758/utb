@@ -8,5 +8,6 @@ services:
       - key: YTDL_NO_UPDATE
         value: true
     preDeployCommand: apt-get update && apt-get install -y ffmpeg && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod a+rx /usr/local/bin/yt-dlp
-    buildCommand: ./build.sh && npm install
+    buildCommand: ./build.sh
     startCommand: node index.js
+

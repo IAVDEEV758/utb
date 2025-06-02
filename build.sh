@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Установим yt-dlp через pip
-pip install yt-dlp
+# Установка Python и yt-dlp
+apt-get update && apt-get install -y python3-pip
+pip3 install --user yt-dlp
 
-# Сохраним путь в $PATH
+# Убедись, что yt-dlp будет в PATH
 echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.profile
