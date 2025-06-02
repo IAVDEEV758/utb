@@ -1,8 +1,10 @@
 const express = require('express');
-const youtubedl = require('youtube-dl-exec');
+const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
 const path = require('path');
+const util = require('util');
+const execPromise = util.promisify(exec);
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -25,34 +27,29 @@ app.get('/download', async (req, res) => {
 
     try {
         console.log(`Fetching info for URL: ${url}`);
-        const info = await youtubedl(url, {
-            dumpSingleJson: true,
-            noWarnings: true,
-            preferFreeFormats: true,
-            addHeader: ['User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36']
-        });
-
+        const { stdout } = await execPromise(`yt-dlp --dump-json "${url}"`);
+        const info = JSON.parse(stdout);
         console.log(`Video title: ${info.title}`);
         const title = info.title.replace(/[^\w\s]/gi, '');
-        const videoFormat = info.formats.find(format => format.vcodec !== 'none' && format.acodec !== 'none');
 
-        if (!videoFormat) {
-            console.log('No suitable video format found');
-            return res.status(400).send('Не удалось найти подходящий формат видео');
-        }
-
+        const tempFile = path.join(__dirname, `temp-${title}.mp4`);
         const outputFile = path.join(__dirname, `${title}.mp4`);
+
+        // Скачиваем видео с помощью yt-dlp
+        await execPromise(`yt-dlp -f bestvideo+bestaudio --merge-output-format mp4 -o "${tempFile}" "${url}"`);
+
         if (end) {
-            const tempFile = path.join(__dirname, `temp-${title}.mp4`);
+            // Обрезка видео с помощью ffmpeg
             await new Promise((resolve, reject) => {
-                ffmpeg(videoFormat.url)
+                ffmpeg(tempFile)
                     .setStartTime(start)
                     .setDuration(end - start)
-                    .output(tempFile)
+                    .output(outputFile)
                     .on('end', () => {
-                        res.download(tempFile, `${title}.mp4`, (err) => {
+                        res.download(outputFile, `${title}.mp4`, (err) => {
                             if (err) console.error(`Download error: ${err.message}`);
                             fs.unlink(tempFile, () => {});
+                            fs.unlink(outputFile, () => {});
                         });
                         resolve();
                     })
@@ -63,8 +60,10 @@ app.get('/download', async (req, res) => {
                     .run();
             });
         } else {
-            res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
-            res.redirect(videoFormat.url);
+            res.download(tempFile, `${title}.mp4`, (err) => {
+                if (err) console.error(`Download error: ${err.message}`);
+                fs.unlink(tempFile, () => {});
+            });
         }
     } catch (error) {
         console.error(`Error downloading video: ${error.message}`, {
