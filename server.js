@@ -17,14 +17,22 @@ app.get('/download', async (req, res) => {
     }
 
     try {
+        console.log(`Attempting to fetch info for URL: ${url}`);
         const info = await ytdl.getInfo(url);
+        console.log(`Video title: ${info.videoDetails.title}`);
         const title = info.videoDetails.title.replace(/[^\w\s]/gi, '');
         const format = ytdl.chooseFormat(info.formats, { quality: 'highestvideo' });
+
+        if (!format) {
+            console.log('No suitable video format found');
+            return res.status(400).send('Не удалось найти подходящий формат видео');
+        }
 
         res.header('Content-Disposition', `attachment; filename="${title}.mp4"`);
         ytdl(url, { format: format }).pipe(res);
     } catch (error) {
-        res.status(500).send(`Ошибка: ${error.message}`);
+        console.error(`Error downloading video: ${error.message}`, error);
+        res.status(500).send(`Ошибка: ${error.message} (Status code: ${error.statusCode || 'unknown'})`);
     }
 });
 
