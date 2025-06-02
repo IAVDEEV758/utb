@@ -36,7 +36,9 @@
 <body>
     <h1>Скачивание видео с YouTube</h1>
     <form action="/download" method="get">
-        <input type="text" name="url" placeholder="Вставьте ссылку на YouTube видео">
+        <input type="text" name="url" placeholder="Вставьте ссылку на YouTube видео" required>
+        <input type="number" name="start" placeholder="Начало (секунды, опционально)">
+        <input type="number" name="end" placeholder="Конец (секунды, опционально)">
         <button type="submit">Скачать видео</button>
     </form>
     <div id="status"></div>
